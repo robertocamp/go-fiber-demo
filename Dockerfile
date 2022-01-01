@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine 
+FROM golang:1.16-alpine as builder
 
 
 WORKDIR /app
@@ -12,4 +12,11 @@ COPY . .
 RUN go build -o ./fiber/demo .
 
 
+# CMD ./fiber/demo
+
+
+###########START NEW IMAGE###################
+
+FROM golang:1.16-alpine as deploy
+COPY --from=builder . .
 CMD ./fiber/demo
