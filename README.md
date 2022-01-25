@@ -12,14 +12,17 @@ project to explore the go fiber framework and deploy to cloud
 3. `go get github.com/gofiber/fiber/v2` :creates dependency in the Project for gofiber; go.mod is updated
 4.  create **main.go**:  use the "hello-world" examle from the "https://github.com/gofiber/recipes" repo
 5.  `cp /Users/robert/Documents/CODE/recipes/hello-world/main.go .`
-6.  smoke test tehe app:  `go run main.go` :this should standup the basic http endpoint at `localhost:3000`
+6.  smoke test tehe app: 
+  + `cd demo`
+  + `go run main.go` :this should standup the basic http endpoint at `localhost:3000`
 ## Dockerfile
 ### create two Dockerfile versions: one using `go mod download` and one not using the download method
   1. `go mod download`
   2. without `go mod download`
 ### Docker build
 - `docker build -t fiber-demo .`
-- docker build -t fiber-demo-certs-added .
+- `docker build -t fiber-demo-certs-added .`
+- `docker build -t fiber-demo-multistage .`
 ### Docker run
 - `docker run -p 3000:3000 fiber-demo`  (3000 is the container port ; 3000 is the browswer port)
 - `docker run -p 8080:3000 fiber-demo` (3000 is the container port ; 8080 is the browswer port)
@@ -70,10 +73,49 @@ go get github.com/prometheus/client_golang/prometheus/promhttp
 - https://blog.alexellis.io/mutli-stage-docker-builds/
 - The general syntax involves adding FROM additional times within your Dockerfile - whichever is the last FROM statement is the final base image.
 - To copy artifacts and outputs from intermediate images use COPY --from=<base_image_number>
+-  docker buildx --platform linux/amd64,linux/arm64 -t fiber-demo-multistage:0.0.2 .
+- the **multi-stage Dockerfile** reduced the image size from over 400MM to just under 40MB!
+- 
+- insert image**
 #### docker image repositories
+##### dockerhub (todo)
+##### AWS ECR
 - https://docs.aws.amazon.com/AmazonECR/latest/userguide/repository-create.html
-
+- Now that you have an image to push to Amazon ECR, you must create a repository to hold it:
+  1. create ECR repository
+  2. upload the production Docker image
+```
+aws ecr create-repository \
+    --repository-name fiber-demo \
+    --image-scanning-configuration scanOnPush=true \
+    --region us-east-2
+```
+- https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html
+- Authenticate your Docker client to the Amazon ECR registry to which you intend to push your image
+- Authentication tokens must be obtained for each registry used
+- the tokens are valid for 12 hours
+- ECR login/authentication requires knowlege of your *aws_account_id*
+- Use the following command to view your user ID, account ID, and your user ARN: `aws sts get-caller-identity`
+- To authenticate Docker to an Amazon ECR registry, run the aws `ecr get-login-password` command
+- `aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin {aws_account_id}.dkr.ecr.{region}.amazonaws.com`
+- you should get a **Login Succeeded** message in the CLI
+- Tag your image with the Amazon ECR registry, repository, and optional image tag name combination to use
+- The registry format is `aws_account_id.dkr.ecr.region.amazonaws.com`
+- example image tagging: `docker tag e9ae3c220b23 aws_account_id.dkr.ecr.region.amazonaws.com/my-repository:tag`
+- `docker tag 32c2665a3749 240195868935.dkr.ecr.us-east-2.amazonaws.com/fiber-demo:0.0.2`
+- Push the image using the docker push command: `docker push aws_account_id.dkr.ecr.region.amazonaws.com/my-repository:tag`
+- example pusH: docker push `240195868935.dkr.ecr.us-east-2.amazonaws.com/fiber-demo:0.0.2`
+- image is available at: `240195868935.dkr.ecr.us-east-2.amazonaws.com/fiber-demo:0.0.2`
 ### kubernetes deployment
+#### AWS EKS
+> Amazon EKS is certified Kubernetes conformant, so existing applications that run on upstream Kubernetes are compatible with Amazon EKS.
+- https://www.techbeatly.com/deploying-aws-load-balancer-controller-and-ingress-on-aws-eks/
+- AWS Load Balancer Controller is a controller to help manage Elastic Load Balancers for a Kubernetes cluster
+- It satisfies Kubernetes Ingress resources by provisioning Application Load Balancers
+- Elastic Load Balancing automatically distributes your incoming traffic across multiple targets, such as EC2 instances, containers, and IP addresses, in one or more Availability Zones.
+- AWS Load Balancer Controller manages AWS Elastic Load Balancers for a Kubernetes cluster, hence we could use for Path-Based Routing
+- A Kubernetes service is a logical abstraction for a deployed group of pods in a cluster (which all perform the same function). 
+1. create namespace:  `kubectl create namespace demo`
 ### test the app
 ## links
 https://www.digitalocean.com/community/tutorials/how-to-use-go-modules
@@ -83,3 +125,18 @@ https://tutorialedge.net/golang/working-with-environment-variables-in-go/
 https://github.com/aws-samples/eks-aws-auth-configmap
 https://aws.amazon.com/premiumsupport/knowledge-center/amazon-eks-cluster-access/
 https://bobbyhadz.com/blog/aws-cli-turn-off-pager
+string to io.Write issue:
+https://stackoverflow.com/questions/36302351/golang-convert-string-to-io-writer
+
+
+
+# List Namespaces
+kubectl get ns 
+
+# Craete Namespace
+kubectl create namespace <namespace-name>
+kubectl create namespace dev1
+kubectl create namespace dev2
+
+# List Namespaces
+kubectl get ns 

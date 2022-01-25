@@ -1,22 +1,20 @@
-FROM golang:1.16-alpine as builder
+FROM golang:1.16-alpine as dev
+
+WORKDIR /demo
 
 
-WORKDIR /app
-
-COPY go.mod .
-COPY go.sum .
-RUN apk update && apk add --no-cache git ca-certificates && update-ca-certificates
-RUN go mod download
-COPY . .
-
-RUN go build -o ./fiber/demo .
+FROM golang:1.16-alpine as build
+WORKDIR /fiber
+COPY ./demo/* /fiber/
+RUN cd /fiber && go mod download
 
 
-# CMD ./fiber/demo
-
-
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o demo .
 ###########START NEW IMAGE###################
-
-FROM golang:1.16-alpine as deploy
-COPY --from=builder . .
-CMD ./fiber/demo
+FROM alpine:latest
+RUN apk update && apk add --no-cache git ca-certificates && update-ca-certificates
+# FROM golang:1.16-alpine as deploy
+COPY --from=build /fiber/demo ./
+# COPY --from=builder . .
+CMD ["./demo"]
